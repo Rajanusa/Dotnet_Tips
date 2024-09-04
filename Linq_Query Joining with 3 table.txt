@@ -1,0 +1,44 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+public class YourService
+{
+    private readonly YourDbContext _context;
+
+    public YourService(YourDbContext context)
+    {
+        _context = context;
+    }
+
+    public IEnumerable<object> GetEmployeeDepartmentProjectInfo(List<int> employeeIds, string statusFilter)
+    {
+        // Ensure the list is not empty to avoid unnecessary query
+        if (employeeIds == null || !employeeIds.Any())
+        {
+            return Enumerable.Empty<object>();
+        }
+
+        // LINQ query using method syntax to join three tables with composite keys
+        var query = _context.Employees
+            .Where(e => employeeIds.Contains(e.Id) && e.Status == statusFilter)
+            .Join(
+                _context.Departments,
+                e => new { e.DepartmentId, e.LocationId },
+                d => new { d.DepartmentId, d.LocationId },
+                (e, d) => new { Employee = e, Department = d })
+            .Join(
+                _context.Projects,
+                ed => new { ed.Employee.ProjectId, ed.Employee.ProjectLocationId },
+                p => new { p.ProjectId, p.LocationId },
+                (ed, p) => new
+                {
+                    EmployeeId = ed.Employee.Id,
+                    EmployeeName = ed.Employee.Name,
+                    DepartmentName = ed.Department.DepartmentName,
+                    ProjectName = p.ProjectName
+                });
+
+        return query.ToList<object>();
+    }
+}
